@@ -116,21 +116,40 @@ class QlMemoryManager:
         self.map_info = tmp_map_info
 
 
-    def show_mapinfo(self):
-        def _perms_mapping(ps):
-            perms_d = {1: "r", 2: "w", 4: "x"}
-            perms_sym = []
-            for idx, val in perms_d.items():
-                if idx & ps != 0:
-                    perms_sym.append(val)
-                else:
-                    perms_sym.append("-")
-            return "".join(perms_sym)
+    def _perms_mapping(self, ps):
+        perms_d = {1: "r", 2: "w", 4: "x"}
+        perms_sym = []
+        for idx, val in perms_d.items():
+            if idx & ps != 0:
+                perms_sym.append(val)
+            else:
+                perms_sym.append("-")
+        return "".join(perms_sym)
 
+
+    def show_mapinfo(self):
         self.ql.nprint("[+] Start      End        Perm.  Path")
         for  start, end, perm, info in self.map_info:
-            _perm = _perms_mapping(perm)
+            _perm = self._perms_mapping(perm)
             self.ql.nprint("[+] %08x - %08x - %s    %s" % (start, end, _perm, info))
+
+
+    def get_proc_map(self):
+        proc_str = ""
+        rootfs_abspath = os.path.abspath(self.ql.rootfs)
+        for start, end, perm, info in self.map_info:
+            _perm = self._perms_mapping(perm)
+            if info.startswith(rootfs_abspath):
+                info = info[len(rootfs_abspath):]
+
+            if self.ql.archbit == 64:
+                proc_line = "%016x-%016x %sp %08x 00:00 %-26s %s" % (start, end, _perm, 0, 0, info)
+            elif self.ql.archbit == 32:
+                proc_line = "%08x-%08x %sp %08x 00:00 %-26s %s" % (start, end, _perm, 0, 0, info)
+
+            proc_str += proc_line
+            proc_str += "\n"
+        return proc_str
 
 
     def get_lib_base(self, filename):
