@@ -604,22 +604,27 @@ class GDBSERVERsession(object):
 
                         if os.path.exists(self.lib_abspath):
                             self.send("F5")
+                        elif re.match("\/proc\/.*\/maps", self.lib_path):  # maybe other files to match?
+                            self.send("F8")
                         else:
                             self.send("F0")   
                     else:
                         self.send("F0")
 
                 elif subcmd.startswith('File:pread:'):
-
-                    offset = subcmd.split(',')[-1]
-                    count = subcmd.split(',')[-2]
+                    fd, count, offset = subcmd.split(':')[-1].split(',')
                     offset = ((int(offset, base=16)))
                     count = ((int(count, base=16)))
 
-                    if os.path.exists(self.lib_abspath) and not (self.lib_path).startswith("/proc"):
+                    is_proc = (self.lib_path).startswith("/proc")
+                    is_proc_maps = re.match("\/proc\/.*\/maps", self.lib_path)
 
-                        with open(self.lib_abspath, "rb") as f:
-                            preadheader = f.read()
+                    if (os.path.exists(self.lib_abspath) and not is_proc) or is_proc_maps:
+                        if is_proc_maps:
+                            preadheader = self.ql.mem.get_proc_maps().encode()
+                        else:
+                            with open(self.lib_abspath, "rb") as f:
+                                preadheader = f.read()
 
                         if offset != 0:
                             shift_count = offset + count
@@ -642,9 +647,6 @@ class GDBSERVERsession(object):
 
                         else:
                             self.send("F0;")
-                    
-                    elif re.match("\/proc\/.*\/maps", self.lib_abspath):
-                        self.send("F0;")    
                     
                     else:
                         self.send("F0;")
